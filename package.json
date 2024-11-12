@@ -1,4 +1,11 @@
+
 {
+  "name": "my-socket-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node api/socket.js"
+  },
   "dependencies": {
     "express": "^4.21.1",
     "http": "^0.0.1-security",
