@@ -21,6 +21,10 @@ io.on("connection", (socket) => {
   let currentRoom = null;
   let currentPage = null;
 
+  socket.on('connect', () => {
+    console.log('Connected to server');
+  });
+
   // Khi client yêu cầu tham gia phòng
   socket.on("join-room", (data) => {
     const { roomId, pageId } = data;
