@@ -1,0 +1,11 @@
+/node_modules/
+/.angular/
+
+.angular
+.idea
+.vscode
+dist
+Jenkinsfile
+Jenkinsfile-new
+.nx
+.nx/cache
