@@ -1,3 +1,4 @@
+const { connectToTikTok, disconnectTikTok } = require('./tiktokHandler');
 const express = require("express");
 const cors = require("cors");
 
@@ -18,6 +19,9 @@ const io = new Server(server, {
 });
 
 let roomUserInfo = {}; // Lưu trữ thông tin người dùng trong từng room và page
+
+//Test khong dung socket TODO
+connectToTikTok('aley.nguyenx', io);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
@@ -101,7 +105,21 @@ io.on("connection", (socket) => {
       io.to(currentRoom).emit("update-room-info", roomUserInfo[currentRoom]);
     }
   });
+
+  connectToTikTok('p.lan.miin', socket);
+  // // Nhận username TikTok từ client
+  // socket.on('connect_tiktok', (username) => {
+  //   connectToTikTok(username, socket);
+  // });
+
+  // // Ngắt kết nối
+  // socket.on('disconnect', () => {
+  //   console.log(`User disconnected: ${socket.id}`);
+  //   disconnectTikTok(socket.id);
+  // });
 });
+
+/* ========================================= Giả lập client kết nối để test tiktok ========================================= */
 
 /* ========================================= Trang chủ diễn giải ========================================= */
 app.get("/", (req, res) => {
