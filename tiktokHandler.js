@@ -24,9 +24,10 @@ function connectToTikTok(username, socket) {
     let joinedUsers = {}; // Lưu trạng thái người dùng đã join
 
     function joinRoom(data) {
-        // socket.emit('user_joined', {
+        // socket.emit('tiktok_data', {
         //     username: data.uniqueId,
-        //     message: `${data.uniqueId} đã tham gia room!`
+        //     type: 'join_room',
+        //     data: `${data.uniqueId} đã tham gia room!`
         // });
         console.log(`${data.uniqueId} đã tham gia room! =====================`);
     }
@@ -41,7 +42,12 @@ function connectToTikTok(username, socket) {
             joinRoom(data);
         }
 
-        socket.emit('new_comment', { username: data.uniqueId, comment: data.comment });
+        //socket.emit('new_comment', { username: data.uniqueId, comment: data.comment });
+        // socket.emit('tiktok_data', {
+        //     username: data.uniqueId,
+        //     type: 'new_comment',
+        //     data: data.comment
+        // });
 
         console.log(`Bình luận:`, `${data.uniqueId}: ${data.comment}`);
     });

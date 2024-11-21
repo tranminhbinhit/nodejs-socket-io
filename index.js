@@ -21,7 +21,7 @@ const io = new Server(server, {
 let roomUserInfo = {}; // Lưu trữ thông tin người dùng trong từng room và page
 
 //Test khong dung socket TODO
-connectToTikTok('aley.nguyenx', io);
+connectToTikTok('gacon_dangiuqua', io);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
@@ -106,7 +106,9 @@ io.on("connection", (socket) => {
     }
   });
 
-  connectToTikTok('p.lan.miin', socket);
+  // connectToTikTok('mgb.9x', socket);
+
+  //connectToTikTok('gacon_dangiuqua', socket);
   // // Nhận username TikTok từ client
   // socket.on('connect_tiktok', (username) => {
   //   connectToTikTok(username, socket);
