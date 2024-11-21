@@ -23,12 +23,18 @@ function connectToTikTok(username, socket) {
 
     let joinedUsers = {}; // Lưu trạng thái người dùng đã join
 
+    function tiktokDataSend(type, data, dataEx = {}) {
+        const { uniqueId, nickname, profilePictureUrl, displayType } = data;
+        socket.emit('tiktok_data', {
+            username: uniqueId,
+            type: type,
+            data: { nickname, profilePictureUrl, displayType },
+            dataEx
+        });
+    }
+
     function joinRoom(data) {
-        // socket.emit('tiktok_data', {
-        //     username: data.uniqueId,
-        //     type: 'join_room',
-        //     data: `${data.uniqueId} đã tham gia room!`
-        // });
+        tiktokDataSend('join_room', data);
         console.log(`${data.uniqueId} đã tham gia room! =====================`);
     }
 
@@ -41,13 +47,7 @@ function connectToTikTok(username, socket) {
             // Phát sự kiện join room
             joinRoom(data);
         }
-
-        //socket.emit('new_comment', { username: data.uniqueId, comment: data.comment });
-        // socket.emit('tiktok_data', {
-        //     username: data.uniqueId,
-        //     type: 'new_comment',
-        //     data: data.comment
-        // });
+        tiktokDataSend('new_comment', data, { comment: data.comment });
 
         console.log(`Bình luận:`, `${data.uniqueId}: ${data.comment}`);
     });
@@ -59,8 +59,8 @@ function connectToTikTok(username, socket) {
 
             joinRoom(data);
         }
-        socket.emit('new_gift', {
-            username: data.uniqueId,
+
+        tiktokDataSend('new_gift', data, {
             giftName: data.giftName,
             repeatCount: data.repeatCount,
             diamondCount: data.diamondCount
@@ -76,27 +76,16 @@ function connectToTikTok(username, socket) {
 
             joinRoom(data);
         }
-        socket.emit('new_like', {
-            username: data.uniqueId,
+        console.log(`like:`, `${data.uniqueId}: ${data.nickname}`);
+        tiktokDataSend('new_like', data, {
             likeCount: data.likeCount,
             totalLikeCount: data.totalLikeCount
         });
-        console.log(`like:`, `${data.uniqueId}: ${data.nickname}`);
-        /*
-        uniqueId: 'ngchu0027',
-  nickname: '🌺Mỹ Ngà🌺',
-  profilePictureUrl: 'https://p16-sign-sg.tiktokcdn.com/aweme/100x100/tos-alisg-avt-0068/1d0b17ec9b7b3b19706267c1cbb5e07e.webp?lk3s=a5d48078&nonce=14339&refresh_token=37e7f1d73a27a4c81c2bdc9bc160b350&x-expires=1732291200&x-signature=Zyk2Xsb8Q9Qgw6UHmdVeMvtoSIc%3D&shp=a5d48078&shcp=fdd36af4',
-   displayType: 'pm_mt_msg_viewer',
-        */
-
     });
 
     // Viewer mới
     tiktokLiveConnection.on('viewer', data => {
-        socket.emit('new_viewer', {
-            username: data.uniqueId,
-            profilePicture: data.profilePictureUrl
-        });
+        tiktokDataSend('viewer', data);
     });
 
     // Tổng số người xem
@@ -116,20 +105,14 @@ function connectToTikTok(username, socket) {
             eventType: data.eventType // "follow" hoặc "share"
         });
         console.log(`Theo dõi hoặc chia sẻ:`, `${data.uniqueId}: ${data.displayType}`);
-
-        /*
-        uniqueId: 'duy.iu.v',
-  nickname: 'Duy điều Võ',
-  profilePictureUrl: 'https://p16-sign-sg.tiktokcdn.com/aweme/100x100/tos-alisg-avt-0068/cc1df7704a86416afd1b1f91cd719ea8.webp?lk3s=a5d48078&nonce=19410&refresh_token=c51c11d5838d03e3c77747d5f34052e8&x-expires=1732291200&x-signature=9X%2FlVfNSLxIQh2fDXc1%2Br76qAjM%3D&shp=a5d48078&shcp=fdd36af4',
-  displayType: 'pm_main_follow_message_viewer_2',
-  label: '{0:user} followed the LIVE creator'
-        */
+        tiktokDataSend('new_social_event', data, {
+            eventType: data.eventType
+        });
     });
 
     // Biểu cảm
     tiktokLiveConnection.on('emote', data => {
-        socket.emit('new_emote', {
-            username: data.uniqueId,
+        tiktokDataSend('new_emote', data, {
             emoteName: data.emoteName
         });
 

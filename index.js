@@ -21,7 +21,7 @@ const io = new Server(server, {
 let roomUserInfo = {}; // Lưu trữ thông tin người dùng trong từng room và page
 
 //Test khong dung socket TODO
-connectToTikTok('gacon_dangiuqua', io);
+connectToTikTok('binhkolofficial', io);//gacon_dangiuqua
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
