@@ -4,32 +4,55 @@ const { WebcastPushConnection } = require('tiktok-live-connector');
 const tiktokConnections = {};
 
 // Hàm khởi tạo kết nối TikTok
-function connectToTikTok(username, socket) {
+function connectToTikTok(io, socket, roomId, username) {
     if (!username) return;
-
+    console.log(`========> Room ${roomId} đang thực hiện kết nối tiktok: ${username}`);
     // Tạo kết nối TikTok
+    const configConnect = {
+        processInitialData: true,
+        enableWebsocketUpgrade: true,
+        requestPollingIntervalMs: 2000,
+        requestOptions: {
+            timeout: 50000,
+        },
+        websocketOptions: {
+            timeout: 50000,
+        },
+    }
     const tiktokLiveConnection = new WebcastPushConnection(username);
     //TODO nếu dùng socket 
-    // tiktokConnections[socket.id] = tiktokLiveConnection;
+    //socket.id
+    tiktokConnections[socket.id] = tiktokLiveConnection;
 
     tiktokLiveConnection.connect()
         .then(() => {
-            console.log(`Đã kết nối tới TikTok Live của: ${username}`);
+            const message = `Đã kết nối tới TikTok Live của: ${username}`;
+            console.log(message);
+            sendReceiveData(true, message);
         })
         .catch(err => {
-            console.error(`Không thể kết nối với TikTok: ${err}`);
-            socket.emit('error', 'Kết nối thất bại. Vui lòng thử lại.');
+            const message = `Không thể kết nối với TikTok: ${err}`;
+            console.log(message);
+            sendReceiveData(false, message);
         });
 
     let joinedUsers = {}; // Lưu trạng thái người dùng đã join
 
     function tiktokDataSend(type, data, dataEx = {}) {
         const { uniqueId, nickname, profilePictureUrl, displayType } = data;
-        socket.emit('tiktok_data', {
+        socket.to(roomId).emit('tiktok_data', {
             username: uniqueId,
             type: type,
             data: { nickname, profilePictureUrl, displayType },
             dataEx
+        });
+    }
+
+    function sendReceiveData(status, message) {
+        io.to(roomId).emit('receive-data', {
+            tiktokLive: {
+                status, message
+            }
         });
     }
 
@@ -90,20 +113,16 @@ function connectToTikTok(username, socket) {
 
     // Tổng số người xem
     tiktokLiveConnection.on('roomUser', data => {
-        socket.emit('viewer_count', { viewerCount: data.viewerCount });
+        //{ viewerCount: data.viewerCount }
     });
 
     // Livestream kết thúc
     tiktokLiveConnection.on('streamEnd', () => {
-        socket.emit('stream_ended', { message: 'Livestream đã kết thúc.' });
+        //{ message: 'Livestream đã kết thúc.' }
     });
 
     // Theo dõi hoặc chia sẻ
     tiktokLiveConnection.on('social', data => {
-        socket.emit('new_social_event', {
-            username: data.uniqueId,
-            eventType: data.eventType // "follow" hoặc "share"
-        });
         console.log(`Theo dõi hoặc chia sẻ:`, `${data.uniqueId}: ${data.displayType}`);
         tiktokDataSend('new_social_event', data, {
             eventType: data.eventType
@@ -126,6 +145,7 @@ function disconnectTikTok(socketId) {
         tiktokConnections[socketId].disconnect();
         delete tiktokConnections[socketId];
         console.log(`Đã ngắt kết nối TikTok của socket: ${socketId}`);
+
     }
 }
 

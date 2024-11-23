@@ -20,8 +20,10 @@ const io = new Server(server, {
 
 let roomUserInfo = {}; // Lưu trữ thông tin người dùng trong từng room và page
 
-//Test khong dung socket TODO
-connectToTikTok('binhkolofficial', io);//gacon_dangiuqua
+let roomStreamInfo = {}
+
+// Test khong dung socket TODO
+//connectToTikTok('khanhly_gl1986', io);//binhkolofficial | gacon_dangiuqua
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
@@ -106,19 +108,21 @@ io.on("connection", (socket) => {
     }
   });
 
-  // connectToTikTok('mgb.9x', socket);
-
-  //connectToTikTok('gacon_dangiuqua', socket);
-  // // Nhận username TikTok từ client
-  // socket.on('connect_tiktok', (username) => {
-  //   connectToTikTok(username, socket);
-  // });
+  // Nhận username TikTok từ client
+  socket.on('connect_tiktok', (data) => {
+    const {roomId, username} = data;
+    // if (!roomStreamInfo[username]) {
+    //   roomStreamInfo[username] = {}; // Tạo object cho room nếu chưa có
+    // }
+    connectToTikTok(io, socket, roomId, username);
+    //socket.to(roomId).emit("receive-data", { message, senderId: socket.id });
+  });
 
   // // Ngắt kết nối
-  // socket.on('disconnect', () => {
-  //   console.log(`User disconnected: ${socket.id}`);
-  //   disconnectTikTok(socket.id);
-  // });
+  socket.on('disconnect_tiktok', () => {
+    console.log(`User disconnected: ${socket.id}`);
+    disconnectTikTok(socket.id);
+  });
 });
 
 /* ========================================= Giả lập client kết nối để test tiktok ========================================= */
