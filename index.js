@@ -119,9 +119,9 @@ io.on("connection", (socket) => {
   });
 
   // // Ngắt kết nối
-  socket.on('disconnect_tiktok', () => {
+  socket.on('disconnect_tiktok', (roomId) => {
     console.log(`User disconnected: ${socket.id}`);
-    disconnectTikTok(socket.id);
+    disconnectTikTok(io, socket, roomId);
   });
 });
 
