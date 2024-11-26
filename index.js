@@ -1,4 +1,4 @@
-const { connectToTikTok, disconnectTikTok } = require('./tiktokHandler');
+const { connectToTikTok, disconnectTikTok,tiktokConnection } = require('./tiktokHandler');
 const express = require("express");
 const cors = require("cors");
 
@@ -64,7 +64,11 @@ io.on("connection", (socket) => {
     roomUserInfo[roomId][pageId].push({ socketId: socket.id });
 
     // Phát lại thông tin về số lượng người dùng từ từng trang
-    io.to(roomId).emit("update-room-info", roomUserInfo[roomId]);
+    const roomInfo = {
+      roomInfo: roomUserInfo[roomId],
+      liveTiktok: tiktokConnection()
+    }
+    io.to(roomId).emit("update-room-info", roomInfo);
 
     // Phát sự kiện cho tất cả các client trong phòng về người mới tham gia
     io.to(roomId).emit("user-joined", {
@@ -119,9 +123,10 @@ io.on("connection", (socket) => {
   });
 
   // // Ngắt kết nối
-  socket.on('disconnect_tiktok', (roomId) => {
-    console.log(`User disconnected: ${socket.id}`);
-    disconnectTikTok(io, socket, roomId);
+  socket.on('disconnect_tiktok', (data) => {
+    const {roomId, username} = data;
+    console.log(`User disconnected: ${username}`);
+    disconnectTikTok(io, roomId, username);
   });
 });
 

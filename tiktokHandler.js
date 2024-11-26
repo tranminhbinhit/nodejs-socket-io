@@ -3,16 +3,20 @@ const { WebcastPushConnection } = require("tiktok-live-connector");
 // Quản lý kết nối TikTok theo socket
 const tiktokConnections = {};
 
+function tiktokConnection(){
+    return Object.keys(tiktokConnections).map(key => `${key}`);
+}
+
 // Hàm khởi tạo kết nối TikTok
 function connectToTikTok(io, socket, roomId, username) {
   if (!username) return;
-  if (tiktokConnections[socket.id]) {
-    const message = `${socket.id} Đã kết nối. Ngắt kết nối để kết nối mới`;
+  if (tiktokConnections[username]) {
+    const message = `${username} Đã kết nối. Ngắt kết nối để kết nối mới`;
     sendReceiveData(false, message);
     return;
   }
   console.log(
-    `========> Room ${roomId} đang thực hiện kết nối tiktok: ${socket.id}`
+    `========> Room ${roomId} đang thực hiện kết nối tiktok: ${username}`
   );
   // Tạo kết nối TikTok
   const configConnect = {
@@ -29,7 +33,7 @@ function connectToTikTok(io, socket, roomId, username) {
   const tiktokLiveConnection = new WebcastPushConnection(username);
   //TODO nếu dùng socket
   //socket.id
-  tiktokConnections[socket.id] = tiktokLiveConnection;
+  tiktokConnections[username] = tiktokLiveConnection;
 
   tiktokLiveConnection
     .connect()
@@ -39,6 +43,7 @@ function connectToTikTok(io, socket, roomId, username) {
     })
     .catch((err) => {
       const message = `Không thể kết nối với TikTok: ${err}`;
+      delete tiktokConnections[username];
       sendReceiveData(false, message);
     });
 
@@ -153,12 +158,12 @@ function connectToTikTok(io, socket, roomId, username) {
 }
 
 // Hàm ngắt kết nối TikTok
-function disconnectTikTok(io, socket, roomId) {
+function disconnectTikTok(io, roomId, username) {
   let message = `Không có kết nối`;
-  if (tiktokConnections[socket.id]) {
-    tiktokConnections[socket.id].disconnect();
-    delete tiktokConnections[socket.id];
-    message = `Đã ngắt kết nối TikTok của socket: ${socket.id}`;
+  if (tiktokConnections[username]) {
+    tiktokConnections[username].disconnect();
+    delete tiktokConnections[username];
+    message = `Đã ngắt kết nối TikTok của socket: ${username}`;
   }
   io.to(roomId).emit("receive-data", {
     tiktokLive: {
@@ -171,4 +176,5 @@ function disconnectTikTok(io, socket, roomId) {
 module.exports = {
   connectToTikTok,
   disconnectTikTok,
+  tiktokConnection
 };
