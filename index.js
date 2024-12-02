@@ -84,6 +84,19 @@ io.on("connection", (socket) => {
     console.log(`Message from ${socket.id} to room ${roomId}: ${message}`);
   });
 
+  // Giả lập tiktok message
+  socket.on("send_tiktok_data", (dataValue) => {
+    const {roomId, type, data, dataEx = {} } = dataValue;
+    const { uniqueId, nickname, profilePictureUrl, displayType } = data;
+    console.log(`Message from send_tiktok_data`, uniqueId, nickname, profilePictureUrl, displayType);
+    io.to(roomId).emit("tiktok_data", {
+      username: uniqueId,
+      type: type,
+      data: { nickname, profilePictureUrl, displayType },
+      dataEx,
+    });
+  });
+
   // Nhận tin nhắn và phát lại video các client khác trong cùng phòng
   socket.on("send-video", (data) => {
     const { roomId, message } = data;
