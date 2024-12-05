@@ -66,7 +66,7 @@ io.on("connection", (socket) => {
     // Phát lại thông tin về số lượng người dùng từ từng trang
     const roomInfo = {
       roomInfo: roomUserInfo[roomId],
-      liveTiktok: tiktokConnection()
+      tiktokConnection: tiktokConnection()
     }
     io.to(roomId).emit("update-room-info", roomInfo);
 

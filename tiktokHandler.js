@@ -3,8 +3,8 @@ const { WebcastPushConnection } = require("tiktok-live-connector");
 // Quản lý kết nối TikTok theo socket
 const tiktokConnections = {};
 
-function tiktokConnection(){
-    return Object.keys(tiktokConnections).map(key => `${key}`);
+function tiktokConnection() {
+  return Object.keys(tiktokConnections).map((key) => `${key}`);
 }
 
 // Hàm khởi tạo kết nối TikTok
@@ -12,12 +12,10 @@ function connectToTikTok(io, socket, roomId, username) {
   if (!username) return;
   if (tiktokConnections[username]) {
     const message = `${username} Đã kết nối. Ngắt kết nối để kết nối mới`;
-    sendReceiveData(false, message);
+    sendReceiveData(io, roomId, false, message);
     return;
   }
-  console.log(
-    `========> Room ${roomId} đang thực hiện kết nối tiktok: ${username}`
-  );
+
   // Tạo kết nối TikTok
   const configConnect = {
     processInitialData: true,
@@ -39,12 +37,12 @@ function connectToTikTok(io, socket, roomId, username) {
     .connect()
     .then(() => {
       const message = `Đã kết nối tới TikTok: ${username}`;
-      sendReceiveData(true, message);
+      sendReceiveData(io, roomId, true, message);
     })
     .catch((err) => {
       const message = `Không thể kết nối với TikTok: ${err}`;
       delete tiktokConnections[username];
-      sendReceiveData(false, message);
+      sendReceiveData(io, roomId, false, message);
     });
 
   let joinedUsers = {}; // Lưu trạng thái người dùng đã join
@@ -59,19 +57,8 @@ function connectToTikTok(io, socket, roomId, username) {
     });
   }
 
-  function sendReceiveData(status, message) {
-    console.log(`${socket.id} ============ ${message}`);
-    io.to(roomId).emit("receive-data", {
-      tiktokLive: {
-        status,
-        message,
-      },
-    });
-  }
-
   function joinRoom(data) {
     tiktokDataSend("join_room", data);
-    console.log(`${data.uniqueId} đã tham gia room! =====================`);
   }
 
   // Bình luận
@@ -83,8 +70,6 @@ function connectToTikTok(io, socket, roomId, username) {
       joinRoom(data);
     }
     tiktokDataSend("new_comment", data, { comment: data.comment });
-
-    console.log(`Bình luận:`, `${data.uniqueId}: ${data.comment}`);
   });
 
   // Quà tặng
@@ -96,15 +81,14 @@ function connectToTikTok(io, socket, roomId, username) {
     }
 
     tiktokDataSend("new_gift", data, {
+      giftId: data.giftId,
+      giftType: data.giftType,
       giftName: data.giftName,
-      repeatCount: data.repeatCount,
       diamondCount: data.diamondCount,
+      giftPictureUrl: data.giftPictureUrl,
     });
 
-    console.log(
-      `Quà tặng:`,
-      `${data.uniqueId}: ${data.giftName} - ${data.diamondCount}`
-    );
+    console.log(`Quà tặng:`, `${data.uniqueId}: ${data.giftName} - ${data}`);
   });
 
   // Like
@@ -114,7 +98,7 @@ function connectToTikTok(io, socket, roomId, username) {
 
       joinRoom(data);
     }
-    console.log(`like:`, `${data.uniqueId}: ${data.nickname}`);
+
     tiktokDataSend("new_like", data, {
       likeCount: data.likeCount,
       totalLikeCount: data.totalLikeCount,
@@ -152,8 +136,16 @@ function connectToTikTok(io, socket, roomId, username) {
     tiktokDataSend("new_emote", data, {
       emoteName: data.emoteName,
     });
+  });
+}
 
-    console.log(`Biểu cảm:`, `${data.uniqueId}: ${data.emoteName}`);
+function sendReceiveData(io, roomId, status, message) {
+  io.to(roomId).emit("receive-data", {
+    tiktokLive: {
+      status,
+      message,
+    },
+    tiktokConnection: tiktokConnection()
   });
 }
 
@@ -165,16 +157,11 @@ function disconnectTikTok(io, roomId, username) {
     delete tiktokConnections[username];
     message = `Đã ngắt kết nối TikTok của socket: ${username}`;
   }
-  io.to(roomId).emit("receive-data", {
-    tiktokLive: {
-      status: false,
-      message,
-    },
-  });
+  sendReceiveData(io, roomId, false, message);
 }
 
 module.exports = {
   connectToTikTok,
   disconnectTikTok,
-  tiktokConnection
+  tiktokConnection,
 };
