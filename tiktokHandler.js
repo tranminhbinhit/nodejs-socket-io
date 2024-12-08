@@ -122,10 +122,6 @@ function connectToTikTok(io, socket, roomId, username) {
 
   // Theo dõi hoặc chia sẻ
   tiktokLiveConnection.on("social", (data) => {
-    console.log(
-      `Theo dõi hoặc chia sẻ:`,
-      `${data.uniqueId}: ${data.displayType}`
-    );
     tiktokDataSend("new_social_event", data, {
       eventType: data.eventType,
     });

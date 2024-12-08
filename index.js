@@ -1,4 +1,8 @@
-const { connectToTikTok, disconnectTikTok,tiktokConnection } = require('./tiktokHandler');
+const {
+  connectToTikTok,
+  disconnectTikTok,
+  tiktokConnection,
+} = require("./tiktokHandler");
 const express = require("express");
 const cors = require("cors");
 
@@ -20,7 +24,14 @@ const io = new Server(server, {
 
 let roomUserInfo = {}; // Lưu trữ thông tin người dùng trong từng room và page
 
-let roomStreamInfo = {}
+let roomStreamInfo = {};
+
+let roomConfigDefault = {
+  isShowThankLike: false,
+  isShowTopLike: false,
+  isShowGiftInteract: false,
+  showLiveText: ''
+};
 
 // Test khong dung socket TODO
 //connectToTikTok('khanhly_gl1986', io);//binhkolofficial | gacon_dangiuqua
@@ -61,13 +72,17 @@ io.on("connection", (socket) => {
       roomUserInfo[roomId][pageId] = []; // Tạo danh sách người dùng cho pageId nếu chưa có
     }
 
+    if (!roomUserInfo[roomId]['roomConfig']) {
+      roomUserInfo[roomId]['roomConfig'] = roomConfigDefault;
+    }
+
     roomUserInfo[roomId][pageId].push({ socketId: socket.id });
 
     // Phát lại thông tin về số lượng người dùng từ từng trang
     const roomInfo = {
       roomInfo: roomUserInfo[roomId],
-      tiktokConnection: tiktokConnection()
-    }
+      tiktokConnection: tiktokConnection(),
+    };
     io.to(roomId).emit("update-room-info", roomInfo);
 
     // Phát sự kiện cho tất cả các client trong phòng về người mới tham gia
@@ -75,6 +90,21 @@ io.on("connection", (socket) => {
       userId: socket.id,
       pageId: currentPage,
     });
+  });
+
+  socket.on("set-room-info", (data) => {
+    const { roomId, roomConfig } = data;
+
+    if (roomUserInfo[roomId]) {
+      roomUserInfo[roomId]['roomConfig'] = roomConfig; // Tạo danh sách người dùng cho pageId nếu chưa có
+    }
+
+    // Phát lại thông tin về số lượng người dùng từ từng trang
+    const roomInfo = {
+      roomInfo: roomUserInfo[roomId],
+      tiktokConnection: tiktokConnection(),
+    };
+    io.to(roomId).emit("update-room-info", roomInfo);
   });
 
   // Nhận tin nhắn và phát lại cho các client khác trong cùng phòng
@@ -86,9 +116,15 @@ io.on("connection", (socket) => {
 
   // Giả lập tiktok message
   socket.on("send_tiktok_data", (dataValue) => {
-    const {roomId, type, data, dataEx = {} } = dataValue;
+    const { roomId, type, data, dataEx = {} } = dataValue;
     const { uniqueId, nickname, profilePictureUrl, displayType } = data;
-    console.log(`Message from send_tiktok_data`, uniqueId, nickname, profilePictureUrl, displayType);
+    console.log(
+      `Message from send_tiktok_data`,
+      uniqueId,
+      nickname,
+      profilePictureUrl,
+      displayType
+    );
     io.to(roomId).emit("tiktok_data", {
       username: uniqueId,
       type: type,
@@ -126,8 +162,8 @@ io.on("connection", (socket) => {
   });
 
   // Nhận username TikTok từ client
-  socket.on('connect_tiktok', (data) => {
-    const {roomId, username} = data;
+  socket.on("connect_tiktok", (data) => {
+    const { roomId, username } = data;
     // if (!roomStreamInfo[username]) {
     //   roomStreamInfo[username] = {}; // Tạo object cho room nếu chưa có
     // }
@@ -136,8 +172,8 @@ io.on("connection", (socket) => {
   });
 
   // // Ngắt kết nối
-  socket.on('disconnect_tiktok', (data) => {
-    const {roomId, username} = data;
+  socket.on("disconnect_tiktok", (data) => {
+    const { roomId, username } = data;
     console.log(`User disconnected: ${username}`);
     disconnectTikTok(io, roomId, username);
   });
