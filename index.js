@@ -30,7 +30,9 @@ let roomConfigDefault = {
   isShowThankLike: false,
   isShowTopLike: false,
   isShowGiftInteract: false,
-  showLiveText: ''
+  showLiveText: '',  
+  isLiveGroup: false,
+  isLivePk: false,
 };
 
 // Test khong dung socket TODO
