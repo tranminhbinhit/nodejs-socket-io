@@ -56,7 +56,16 @@ function connectToTikTok(io, socket, roomId, username) {
   let joinedUsers = {}; // Lưu trạng thái người dùng đã join
 
   function imageUrl(image) {
-    return image?.urlList?.[0] || image?.url?.[0] || null;
+    if (!image) return null;
+    if (typeof image === "string") return image;
+    if (Array.isArray(image)) {
+      return image.find((url) => typeof url === "string" && url.length) || null;
+    }
+    const urls = image.urlList || image.url || image.urls;
+    if (Array.isArray(urls)) {
+      return urls.find((url) => typeof url === "string" && url.length) || null;
+    }
+    return typeof urls === "string" ? urls : image.uri || null;
   }
 
   function eventUser(data) {
@@ -73,7 +82,11 @@ function connectToTikTok(io, socket, roomId, username) {
     const uniqueId = eventUniqueId(data);
     const nickname = user.nickname;
     const profilePictureUrl =
-      imageUrl(user.avatarLarge) || imageUrl(user.profilePicture);
+      imageUrl(user.avatarLarge) ||
+      imageUrl(user.avatarMedium) ||
+      imageUrl(user.avatarThumb) ||
+      imageUrl(user.profilePicture) ||
+      imageUrl(user.profilePictureUrl);
     const displayType =
       data.displayType || data.common?.displayText?.displayType;
     io.to(roomId).emit("tiktok_data", {
