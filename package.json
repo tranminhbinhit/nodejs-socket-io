@@ -1,6 +1,7 @@
 {
   "name": "my-socket-app",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -11,7 +12,7 @@
     "express": "^4.21.1",
     "http": "^0.0.1-security",
     "socket.io": "^4.8.1",
-    "tiktok-live-connector": "^1.2.3",
+    "tiktok-live-connector": "^2.4.3",
     "ws": "^8.18.0"
   }
 }

@@ -1,13 +1,13 @@
-const {
+import {
   connectToTikTok,
   disconnectTikTok,
   tiktokConnection,
-} = require("./tiktokHandler");
-const express = require("express");
-const cors = require("cors");
+} from "./tiktokHandler.js";
+import express from "express";
+import cors from "cors";
 
-const http = require("http");
-const { Server } = require("socket.io");
+import http from "http";
+import { Server } from "socket.io";
 
 const app = express();
 app.use(cors({ origin: true }));
@@ -27,9 +27,15 @@ let roomUserInfo = {}; // Lưu trữ thông tin người dùng trong từng room
 let roomStreamInfo = {};
 
 let roomConfigDefault = {
-  isShowThankLike: false,
+  isShowThanksLike: false,
   isShowTopLike: false,
+  isShowTopGift: false,
   isShowGiftInteract: false,
+  isShowImageLiveShow: false,
+  isShowFireWorkGiftAvatar: false,
+  isActionEffect: false,
+  isLiveDisco: false,
+  isNotiTextEffect: false,
   showLiveText: '',  
   isLiveGroup: false,
   isLivePk: false,

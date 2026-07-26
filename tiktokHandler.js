@@ -1,4 +1,8 @@
-const { WebcastPushConnection } = require("tiktok-live-connector");
+import {
+  ControlEvent,
+  TikTokLiveConnection,
+  WebcastEvent,
+} from "tiktok-live-connector";
 
 // Quản lý kết nối TikTok theo socket
 const tiktokConnections = {};
@@ -19,16 +23,20 @@ function connectToTikTok(io, socket, roomId, username) {
   // Tạo kết nối TikTok
   const configConnect = {
     processInitialData: true,
-    enableWebsocketUpgrade: true,
-    requestPollingIntervalMs: 2000,
-    requestOptions: {
-      timeout: 50000,
+    // Không bật enableExtendedGiftInfo: endpoint danh sách quà yêu cầu
+    // Euler Stream Business. Dữ liệu giftDetails trong event đã đủ cho UI.
+    enableExtendedGiftInfo: false,
+    webClientOptions: {
+      timeout: { request: 50000 },
     },
-    websocketOptions: {
-      timeout: 50000,
+    wsClientOptions: {
+      handshakeTimeout: 50000,
     },
   };
-  const tiktokLiveConnection = new WebcastPushConnection(username);
+  const tiktokLiveConnection = new TikTokLiveConnection(
+    username,
+    configConnect
+  );
   //TODO nếu dùng socket
   //socket.id
   tiktokConnections[username] = tiktokLiveConnection;
@@ -47,8 +55,27 @@ function connectToTikTok(io, socket, roomId, username) {
 
   let joinedUsers = {}; // Lưu trạng thái người dùng đã join
 
+  function imageUrl(image) {
+    return image?.urlList?.[0] || image?.url?.[0] || null;
+  }
+
+  function eventUser(data) {
+    return data?.user || data || {};
+  }
+
+  function eventUniqueId(data) {
+    const user = eventUser(data);
+    return user.uniqueId || user.displayId;
+  }
+
   function tiktokDataSend(type, data, dataEx = {}) {
-    const { uniqueId, nickname, profilePictureUrl, displayType } = data;
+    const user = eventUser(data);
+    const uniqueId = eventUniqueId(data);
+    const nickname = user.nickname;
+    const profilePictureUrl =
+      imageUrl(user.avatarLarge) || imageUrl(user.profilePicture);
+    const displayType =
+      data.displayType || data.common?.displayText?.displayType;
     io.to(roomId).emit("tiktok_data", {
       username: uniqueId,
       type: type,
@@ -58,80 +85,120 @@ function connectToTikTok(io, socket, roomId, username) {
   }
 
   function joinRoom(data) {
-    tiktokDataSend("join_room", data);
+    const uniqueId = eventUniqueId(data);
+    if (!uniqueId || joinedUsers[uniqueId]) return;
+
+    joinedUsers[uniqueId] = true;
+    tiktokDataSend("join_room", data, {
+      memberCount: data.memberCount,
+    });
   }
 
-  // Bình luận
-  tiktokLiveConnection.on("chat", (data) => {
-    if (!joinedUsers[data.uniqueId]) {
-      joinedUsers[data.uniqueId] = true;
+  // Người xem mới vào phòng. Schema v3 phát event MEMBER thay cho "viewer".
+  tiktokLiveConnection.on(WebcastEvent.MEMBER, (data) => {
+    joinRoom(data);
+  });
 
-      // Phát sự kiện join room
-      joinRoom(data);
-    }
-    tiktokDataSend("new_comment", data, { comment: data.comment });
+  // Bình luận
+  tiktokLiveConnection.on(WebcastEvent.CHAT, (data) => {
+    // Một số phòng không phát MEMBER ổn định, nên dùng tương tác làm fallback.
+    joinRoom(data);
+    // Schema v3 đổi tên trường nội dung từ `comment` thành `content`.
+    // Giữ fallback để vẫn tương thích nếu TikTok trả schema v2.
+    tiktokDataSend("new_comment", data, {
+      comment: data.content ?? data.comment ?? "",
+    });
   });
 
   // Quà tặng
-  tiktokLiveConnection.on("gift", (data) => {
-    if (!joinedUsers[data.uniqueId]) {
-      joinedUsers[data.uniqueId] = true;
+  tiktokLiveConnection.on(WebcastEvent.GIFT, (data) => {
+    const uniqueId = eventUniqueId(data);
+    joinRoom(data);
 
-      joinRoom(data);
-    }
+    const giftType = data.gift?.type ?? data.giftDetails?.giftType;
+    const repeatCount = Number(data.repeatCount || 1);
+    const repeatEnd = Boolean(data.repeatEnd);
+    const giftDiamondCount = Number(
+      data.gift?.diamondCount ??
+      data.giftDetails?.diamondCount ??
+      data.extendedGiftInfo?.diamondCount ??
+      0
+    );
+
+    // Gift dạng streak được phát nhiều lần với repeatCount tăng dần.
+    // Chỉ gửi lần cuối để UI không chạy hiệu ứng và cộng coin trùng.
+    if (giftType === 1 && !repeatEnd) return;
 
     tiktokDataSend("new_gift", data, {
-      giftId: data.giftId,
-      giftType: data.giftType,
-      giftName: data.giftName,
-      diamondCount: data.diamondCount,
-      giftPictureUrl: data.giftPictureUrl,
+      // Schema v3 trả ID dạng string, trong khi frontend đang so với number.
+      giftId: Number(data.giftId || data.gift?.id || 0),
+      giftType,
+      giftName:
+        data.gift?.name ||
+        data.giftDetails?.giftName ||
+        data.extendedGiftInfo?.name,
+      diamondCount: giftDiamondCount * repeatCount,
+      giftPictureUrl:
+        imageUrl(data.gift?.image) ||
+        imageUrl(data.giftDetails?.giftImage) ||
+        imageUrl(data.extendedGiftInfo?.picture),
+      repeatCount,
+      repeatEnd,
     });
 
-    console.log(`Quà tặng:`, `${data.uniqueId}: ${data.giftName} - ${data}`);
+    console.log(
+      "Quà tặng:",
+      `${uniqueId}: ${data.gift?.name || data.giftDetails?.giftName || data.giftId}`
+    );
   });
 
   // Like
-  tiktokLiveConnection.on("like", (data) => {
-    if (!joinedUsers[data.uniqueId]) {
-      joinedUsers[data.uniqueId] = true;
-
-      joinRoom(data);
-    }
+  tiktokLiveConnection.on(WebcastEvent.LIKE, (data) => {
+    joinRoom(data);
 
     tiktokDataSend("new_like", data, {
-      likeCount: data.likeCount,
-      totalLikeCount: data.totalLikeCount,
+      likeCount: data.count ?? data.likeCount,
+      totalLikeCount: Number(data.total ?? data.totalLikeCount ?? 0),
     });
   });
 
   // Viewer mới
-  tiktokLiveConnection.on("viewer", (data) => {
-    tiktokDataSend("viewer", data);
-  });
-
   // Tổng số người xem
-  tiktokLiveConnection.on("roomUser", (data) => {
-    //{ viewerCount: data.viewerCount }
+  tiktokLiveConnection.on(WebcastEvent.ROOM_USER, (data) => {
+    tiktokDataSend("viewer", data, {
+      viewerCount: Number(
+        data.totalUser ?? data.viewerCount ?? data.total ?? data.popularity ?? 0
+      ),
+    });
   });
 
   // Livestream kết thúc
-  tiktokLiveConnection.on("streamEnd", () => {
-    //{ message: 'Livestream đã kết thúc.' }
+  tiktokLiveConnection.on(WebcastEvent.STREAM_END, () => {
+    delete tiktokConnections[username];
+    sendReceiveData(io, roomId, false, `TikTok LIVE đã kết thúc: ${username}`);
   });
 
   // Theo dõi hoặc chia sẻ
-  tiktokLiveConnection.on("social", (data) => {
+  tiktokLiveConnection.on(WebcastEvent.SOCIAL, (data) => {
+    joinRoom(data);
     tiktokDataSend("new_social_event", data, {
-      eventType: data.eventType,
+      eventType: data.action || data.shareType,
+      followCount: Number(data.followCount || 0),
+      shareCount: data.shareCount,
     });
   });
 
   // Biểu cảm
-  tiktokLiveConnection.on("emote", (data) => {
+  tiktokLiveConnection.on(WebcastEvent.EMOTE, (data) => {
+    joinRoom(data);
     tiktokDataSend("new_emote", data, {
-      emoteName: data.emoteName,
+      emoteName: data.emoteList?.[0]?.emoteId,
+      emoteImageUrl: imageUrl(data.emoteList?.[0]?.image),
     });
+  });
+
+  tiktokLiveConnection.on(ControlEvent.ERROR, ({ info, exception }) => {
+    console.error(`Lỗi kết nối TikTok ${username}:`, info, exception || "");
   });
 }
 
@@ -156,7 +223,7 @@ function disconnectTikTok(io, roomId, username) {
   sendReceiveData(io, roomId, false, message);
 }
 
-module.exports = {
+export {
   connectToTikTok,
   disconnectTikTok,
   tiktokConnection,
